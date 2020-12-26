@@ -9,7 +9,14 @@ exports.getAllSauces = (req, res, next) => {
 
 exports.getOneSauce = (req, res, next) => {
     Sauce.findOne({_id: req.params.id})
-        .then(sauce => res.status(200).json(sauce))
+        .then(sauce => {
+            sauce = sauce.toObject()
+            res.status(200).json({
+                ...sauce,
+                usersLiked: JSON.parse(sauce.usersLiked),
+                usersDisliked: JSON.parse(sauce.usersDisliked)
+            })
+        })
         .catch(error => res.status(400).json({error}))
 }
 
@@ -76,80 +83,58 @@ exports.likeSauce = (req, res, next) => {
             let numberDisLikes = sauce.dislikes
             let usersLiked = JSON.parse(sauce.usersLiked)
             let usersDisliked = JSON.parse(sauce.usersDisliked)
-            const findUserLiked = usersLiked.find(({userId}) => userId === currentUserID)
-            const findUserDisliked = usersDisliked.find(({userId}) => userId === currentUserID)
-
+            const findUserLiked = usersLiked.find((userId) => userId === currentUserID)
+            const findUserDisliked = usersDisliked.find((userId) => userId === currentUserID)
             // Si la personne like
             if (currentVoteUser === 1) {
-                if (findUserLiked === undefined) {
-                    usersLiked.push({userId: currentUserID, like: currentVoteUser})
+                if (!findUserLiked) {
+                    usersLiked.push(currentUserID)
                     numberLikes += 1
-                    let filterDisLikes = usersDisliked;
-                    if (findUserDisliked !== undefined) {
-                        numberDisLikes -= 1
-                        filterDisLikes = usersDisliked.filter(({userId}) => userId !== findUserDisliked.userId)
-                    }
-                    const sauceObject = {
-                        sauce,
-                        likes: numberLikes,
-                        dislikes: numberDisLikes,
-                        usersLiked: JSON.stringify(usersLiked),
-                        usersDisliked: JSON.stringify(filterDisLikes)
-                    }
-                    Sauce.updateOne({_id: req.params.id}, {...sauceObject, _id: req.params.id})
-                        .then(() => res.status(200).json({message: 'Sauce modifié !'}))
+
+                    sauce.likes = numberLikes
+                    sauce.usersLiked = JSON.stringify(usersLiked)
+                    sauce.save()
+                        .then(() => {
+                            res.status(200).json({message: 'Sauce modifié !'})
+                        })
                         .catch(error => res.status(400).json({error}));
-                } else {
-                    throw "Vous avez déja votez"
                 }
             }
 
-            // Si la personne dislike
             if (currentVoteUser === -1) {
-                if (findUserDisliked === undefined) {
-                    usersDisliked.push({userId: currentUserID, like: currentVoteUser})
+                if (!findUserDisliked) {
+                    usersDisliked.push(currentUserID)
                     numberDisLikes += 1
-                    let filterLikes = usersLiked;
-                    if (findUserLiked !== undefined) {
-                        numberLikes -= 1
-                        filterLikes = usersLiked.filter(({userId}) => userId !== findUserLiked.userId)
-                    }
-                    const sauceObject = {
-                        sauce,
-                        likes: numberLikes,
-                        dislikes: numberDisLikes,
-                        usersLiked: JSON.stringify(filterLikes),
-                        usersDisliked: JSON.stringify(usersDisliked)
-                    }
-                    Sauce.updateOne({_id: req.params.id}, {...sauceObject, _id: req.params.id})
-                        .then(() => res.status(200).json({message: 'Sauce modifié !'}))
+
+                    sauce.dislikes = numberDisLikes
+                    sauce.usersDisliked = JSON.stringify(usersDisliked)
+                    sauce.save()
+                        .then(() => {
+                            res.status(200).json({message: 'Sauce modifié !'})
+                        })
                         .catch(error => res.status(400).json({error}));
-                } else {
-                    throw "Vous avez déja votez"
                 }
             }
 
-            // Si la personne retire son vote
             if (currentVoteUser === 0) {
-                if (findUserLiked !== undefined) {
+                if (findUserLiked) {
                     numberLikes -= 1
-                    usersLiked = usersLiked.filter(({userId}) => userId !== findUserLiked.userId)
+                    usersLiked = usersLiked.filter((userId) => userId !== findUserLiked)
                 }
 
-                if (findUserDisliked !== undefined) {
+                if (findUserDisliked) {
                     numberDisLikes -= 1
-                    usersDisliked = usersDisliked.filter(({userId}) => userId !== findUserDisliked.userId)
+                    usersDisliked = usersDisliked.filter((userId) => userId !== findUserDisliked)
                 }
 
-                const sauceObject = {
-                    sauce,
-                    likes: numberLikes,
-                    dislikes: numberDisLikes,
-                    usersLiked: JSON.stringify(usersLiked),
-                    usersDisliked: JSON.stringify(usersDisliked)
-                }
-                Sauce.updateOne({_id: req.params.id}, {...sauceObject, _id: req.params.id})
-                    .then(() => res.status(200).json({message: 'Sauce modifié !'}))
+                sauce.likes = numberLikes
+                sauce.dislikes = numberDisLikes
+                sauce.usersLiked = JSON.stringify(usersLiked)
+                sauce.usersDisliked = JSON.stringify(usersDisliked)
+                sauce.save()
+                    .then(() => {
+                        res.status(200).json({message: 'Sauce modifié !'})
+                    })
                     .catch(error => res.status(400).json({error}));
             }
         })
