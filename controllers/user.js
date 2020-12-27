@@ -44,7 +44,7 @@ exports.signup = async (req, res, next) => {
             return res.status(400).json({errors})
         }
     } else {
-        return res.status(401).json({error: "Un compte existe déja"})
+        return res.status(400).json({error: "Un compte existe déja"})
     }
 
 }
